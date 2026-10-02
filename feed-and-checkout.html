@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Feed, Discovery & Checkout</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .nav-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .cart-badge-btn {
+    background: var(--lavender);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink);
+  }
+  .cart-count {
+    background: var(--cobalt);
+    color: #fff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+  .checkout-section {
+    margin-top: 24px;
+    border-top: 2px solid var(--ink);
+    padding-top: 18px;
+    animation: fadeIn 0.25s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .order-item-card {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .order-item-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 2px;
+    object-fit: cover;
+    background-size: cover;
+    background-position: center;
+  }
+  .payment-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px 0;
+    font-family: var(--sans);
+    font-size: 13px;
+  }
+  .payment-radio-opt {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    cursor: pointer;
+    background: #fff;
+  }
+  .payment-radio-opt.active {
+    border-color: var(--cobalt);
+    background: var(--lavender);
+  }
+  .error-box {
+    background: #FCE8E6;
+    border: 1px solid #FAD2CF;
+    border-radius: 3px;
+    padding: 14px;
+    margin-top: 14px;
+    color: var(--coral);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Content injected by JavaScript -->
+</div>
+
+<!-- Product Details Modal -->
+<div id="product-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-content">
+    <button class="modal-close" onclick="closeProductModal()">✕</button>
+    <div id="modal-product-body">
+      <!-- Dynamic product details -->
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/js/api.js"></script>
+<script>
+const state = {
+  stage: 'open', // 'open' | 'curated'
+  products: [],
+  selectedProduct: null,
+  cart: [], // items: { product, quantity }
+  isCheckoutOpen: false,
+  isProcessing: false,
+  paymentResult: null, // { success: true|false, order, error }
+  simulateDecline: false
+};
+
+function showToast(msg) {
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+async function loadProducts() {
+  state.products = await API.getProducts();
+  render();
+}
+
+function getActiveList() {
+  return state.products.filter(p => p.stage === state.stage);
+}
+
+function openProductModal(productId) {
+  const product = state.products.find(p => p.id === productId);
+  if (!product) return;
+  state.selectedProduct = product;
+  const split = API.calculateSplit(product.price, product.verified);
+
+  const body = document.getElementById('modal-product-body');
+  body.innerHTML = `
+    <img src="${product.image}" class="product-image-large" alt="${product.name}" onerror="this.src=''; this.style.background='${product.color}'" />
+    <div class="creator-tag-chip">Suggested by ${product.by}</div>
+    <h3 class="product-detail-title">${product.name}</h3>
+    <div class="product-detail-price">$${product.price.toFixed(2)} USD</div>
+    <div class="product-detail-desc">${product.description}</div>
+
+    <div style="font-family:var(--sans); font-size:12px; margin-bottom:14px; color:var(--muted);">
+      <b>Fulfillment Seller:</b> ${product.seller}
+      ${product.verified ? '<span class="badge verified" style="margin-left:6px;">Verified Seller</span>' : '<span class="badge open" style="margin-left:6px;">Open Pool</span>'}
+    </div>
+
+    <div class="qty-selector">
+      <span>Quantity:</span>
+      <button class="qty-btn" onclick="updateModalQty(-1)">−</button>
+      <span class="qty-value" id="modal-qty-val">1</span>
+      <button class="qty-btn" onclick="updateModalQty(1)">+</button>
+    </div>
+
+    <!-- 3-Way Transparent Marketplace Fee Split Preview -->
+    <div style="background:var(--lavender); border-radius:3px; padding:12px; font-family:var(--sans); font-size:12px; margin-bottom:16px;">
+      <div style="font-weight:700; margin-bottom:6px; color:var(--ink);">Transparent 3-Way Payout Split:</div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+        <span style="color:var(--muted);">Platform Fee:</span>
+        <span>$${split.platform.toFixed(2)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+        <span style="color:var(--muted);">Referral Cut (${product.by}):</span>
+        <span>$${split.referral.toFixed(2)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-weight:600;">
+        <span style="color:var(--muted);">Seller Payout (${product.seller}):</span>
+        <span>$${split.seller.toFixed(2)}</span>
+      </div>
+    </div>
+
+    <button class="buy-btn" onclick="addToCartFromModal(true)">Checkout Now</button>
+    <button class="ghost-btn" onclick="addToCartFromModal(false)">Add to Cart</button>
+  `;
+
+  document.getElementById('product-modal').style.display = 'flex';
+}
+
+let modalQuantity = 1;
+function updateModalQty(delta) {
+  modalQuantity = Math.max(1, modalQuantity + delta);
+  const el = document.getElementById('modal-qty-val');
+  if (el) el.textContent = modalQuantity;
+}
+
+function closeProductModal() {
+  document.getElementById('product-modal').style.display = 'none';
+  modalQuantity = 1;
+}
+
+function addToCartFromModal(goToCheckout = false) {
+  if (!state.selectedProduct) return;
+  const existing = state.cart.find(c => c.product.id === state.selectedProduct.id);
+  if (existing) {
+    existing.quantity += modalQuantity;
+  } else {
+    state.cart = [{ product: state.selectedProduct, quantity: modalQuantity }]; // Single-item flow for demo focus
+  }
+  showToast(`Added ${state.selectedProduct.name} to checkout`);
+  closeProductModal();
+  if (goToCheckout) {
+    state.isCheckoutOpen = true;
+  }
+  render();
+}
+
+function render() {
+  const app = document.getElementById('app');
+  const list = getActiveList();
+  const cartItem = state.cart[0] || null;
+
+  app.innerHTML = `
+    <div class="nav-header">
+      <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a></div>
+      <div class="top-bar-links">
+        <a href="/seller-dashboard.html">Seller Hub</a>
+        <a href="/transactions.html">Transactions</a>
+        <button class="cart-badge-btn" onclick="toggleCart()">
+          <span>Cart</span>
+          <span class="cart-count">${cartItem ? cartItem.quantity : 0}</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="demo-banner">
+      <div><b>Interactive Demo:</b> Tap any suggested pairing to inspect details & buy.</div>
+      <span class="demo-banner-badge">Phase 1</span>
+    </div>
+
+    <div class="stage-toggle">
+      <button id="btn-open" class="${state.stage==='open'?'active':''}" onclick="setStage('open')">Phase 1 · Open tagging</button>
+      <button id="btn-curated" class="${state.stage==='curated'?'active':''}" onclick="setStage('curated')">Phase 2 · Verified sellers</button>
+    </div>
+
+    <!-- Feed Post Card -->
+    <div class="post-card">
+      <div class="post-item">
+        <div class="swatch" style="background-image:url('https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=400&q=80');"></div>
+        <div>
+          <div class="post-caption">Got this jacket. What do I pair it with?</div>
+          <div class="post-meta">@ellbie.wears · posted 3h ago</div>
+        </div>
+      </div>
+      <div class="prompt">${list.length} people suggested a pairing. Tap one to inspect and checkout.</div>
+    </div>
+
+    <!-- Suggestions List -->
+    <div class="suggestions">
+      ${list.map(s => `
+        <div class="suggestion ${state.selectedProduct && state.selectedProduct.id === s.id ? 'chosen' : ''}" onclick="openProductModal('${s.id}')">
+          <div class="mini-swatch" style="background:${s.color}; background-image:url('${s.image}');"></div>
+          <div class="sugg-body">
+            <div class="sugg-name">
+              ${s.name}
+              ${s.verified ? '<span class="badge verified">Verified</span>' : '<span class="badge open">Open link</span>'}
+            </div>
+            <div class="sugg-by">suggested by <b>${s.by}</b> · ${s.seller}</div>
+          </div>
+          <div class="sugg-price">$${s.price.toFixed(2)}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Checkout Section -->
+    ${cartItem ? renderCheckout(cartItem) : ''}
+
+    <div class="footnote">
+      GoWellWith Platform · Transparent 3-way split: platform fee, creator referral payout, seller payout.<br>
+      Stripe Connect handles automatic escrow and split disbursements.
+    </div>
+  `;
+}
+
+function setStage(stage) {
+  state.stage = stage;
+  state.paymentResult = null;
+  render();
+}
+
+function toggleCart() {
+  if (state.cart.length === 0 && state.products.length > 0) {
+    // Auto-select first product if empty
+    state.cart = [{ product: state.products[0], quantity: 1 }];
+  }
+  state.isCheckoutOpen = !state.isCheckoutOpen;
+  render();
+}
+
+function renderCheckout(cartItem) {
+  const p = cartItem.product;
+  const qty = cartItem.quantity;
+  const totalItemPrice = +(p.price * qty).toFixed(2);
+  const split = API.calculateSplit(totalItemPrice, p.verified);
+
+  if (state.paymentResult && state.paymentResult.success) {
+    return renderSuccessReceipt(state.paymentResult.order);
+  }
+
+  return `
+    <div class="checkout-section" id="checkout-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="panel-title" style="margin:0;">Checkout — Order Summary</div>
+        <button class="cart-badge-btn" style="padding:2px 8px; font-size:11px;" onclick="state.cart=[]; render();">Clear</button>
+      </div>
+
+      <!-- Order Summary Card -->
+      <div class="order-item-card">
+        <div class="order-item-img" style="background-image:url('${p.image}'); background-color:${p.color};"></div>
+        <div style="flex:1;">
+          <div style="font-weight:600; font-size:13.5px; font-family:var(--sans);">${p.name}</div>
+          <div style="font-size:11.5px; color:var(--muted); font-family:var(--sans);">
+            Qty: <b>${qty}</b> · $${p.price.toFixed(2)} each · Seller: <b>${p.seller}</b>
+          </div>
+          <div style="font-size:11px; color:var(--cobalt-deep); font-family:var(--sans); margin-top:2px;">
+            Suggested by ${p.by}
+          </div>
+        </div>
+        <div style="font-weight:700; font-size:14px; font-family:var(--sans);">$${totalItemPrice.toFixed(2)}</div>
+      </div>
+
+      <!-- Payment Summary / 3-Way Split -->
+      <div class="panel-title" style="font-size:14.5px; margin-top:16px;">Payment Breakdown (USD)</div>
+      <div class="split-row">
+        <span class="split-label">Subtotal (${qty} item${qty>1?'s':''})</span>
+        <span>$${totalItemPrice.toFixed(2)}</span>
+      </div>
+      <div class="split-row">
+        <span class="split-label">Platform fee (${(split.platformRate*100).toFixed(0)}%)<span class="to-whom">GoWellWith platform</span></span>
+        <span>$${split.platform.toFixed(2)}</span>
+      </div>
+      <div class="split-row">
+        <span class="split-label">Referral fee (${(split.referralRate*100).toFixed(0)}%)<span class="to-whom">Direct creator payout to ${p.by}</span></span>
+        <span>$${split.referral.toFixed(2)}</span>
+      </div>
+      <div class="split-row">
+        <span class="split-label">Seller payout (${((1 - split.platformRate - split.referralRate)*100).toFixed(0)}%)<span class="to-whom">Direct disbursement to ${p.seller}</span></span>
+        <span>$${split.seller.toFixed(2)}</span>
+      </div>
+      <div class="split-row total">
+        <span class="split-label">Total charged to buyer</span>
+        <span>$${totalItemPrice.toFixed(2)} USD</span>
+      </div>
+
+      <!-- Payment Method Selection -->
+      <div class="payment-radio-group">
+        <div class="payment-radio-opt active">
+          <input type="radio" checked name="pm" id="pm-card">
+          <label for="pm-card" style="cursor:pointer; display:flex; justify-content:space-between; width:100%;">
+            <span><b>Stripe Connect Checkout</b> (Visa, Mastercard, Amex)</span>
+            <span style="font-size:11px; color:var(--muted);">Secure 256-bit</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Test Mode Simulation Toolbar -->
+      <div class="test-toolbar">
+        <div class="test-toolbar-header">
+          <span>Stripe Demo Controls</span>
+          <span style="color:var(--muted); font-size:11px;">Phase 1 Test Suite</span>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="fail-toggle" ${state.simulateDecline ? 'checked' : ''} onchange="state.simulateDecline = this.checked">
+          <span><b>Simulate Payment Failure</b> (Test card decline / error handling flow)</span>
+        </label>
+      </div>
+
+      <!-- Error State Notice if previous attempt failed -->
+      ${state.paymentResult && !state.paymentResult.success ? `
+        <div class="error-box">
+          <b>Payment Failed:</b> ${state.paymentResult.error || 'Your card was declined.'}
+          <div style="margin-top:6px;">Please check your payment details and click <b>Try Again</b> below.</div>
+        </div>
+      ` : ''}
+
+      <!-- Pay Now Button -->
+      <button class="buy-btn" id="pay-now-btn" ${state.isProcessing ? 'disabled' : ''} onclick="handlePayNow()">
+        ${state.isProcessing ? `
+          <span class="spinner"></span>
+          <span>Processing Payment with Stripe...</span>
+        ` : (state.paymentResult && !state.paymentResult.success ? 'Try Again · Pay Now' : `Pay Now · $${totalItemPrice.toFixed(2)}`)}
+      </button>
+    </div>
+  `;
+}
+
+async function handlePayNow() {
+  const cartItem = state.cart[0];
+  if (!cartItem) return;
+  state.isProcessing = true;
+  state.paymentResult = null;
+  render();
+
+  // Scroll to checkout panel
+  const panel = document.getElementById('checkout-panel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth' });
+
+  // Simulate realistic network & gateway processing latency
+  await new Promise(resolve => setTimeout(resolve, 1400));
+
+  try {
+    const res = await API.processPayment({
+      productId: cartItem.product.id,
+      quantity: cartItem.quantity,
+      simulateFailure: state.simulateDecline,
+      customerName: '@ellbie.wears'
+    });
+
+    state.isProcessing = false;
+    state.paymentResult = res;
+
+    if (res.success) {
+      state.cart = []; // Empty cart upon successful order
+      showToast('Payment confirmed! Order registered.');
+    } else {
+      showToast('Payment failed: ' + (res.error || 'Card declined'));
+    }
+  } catch (err) {
+    state.isProcessing = false;
+    state.paymentResult = { success: false, error: err.message };
+    showToast('Payment error: ' + err.message);
+  }
+
+  render();
+}
+
+function renderSuccessReceipt(order) {
+  return `
+    <div class="checkout-section">
+      <div class="card status-card">
+        <div class="status-icon success">✓</div>
+        <div class="status-title">Payment Successful</div>
+        <div class="status-body">
+          Thank you! Your payment of <b>$${order.amount.toFixed(2)} ${order.currency}</b> was processed through Stripe Connect and split automatically.
+        </div>
+
+        <div class="receipt-box">
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Order ID</span>
+            <span><b>${order.orderId}</b></span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Transaction Reference</span>
+            <span style="font-family:monospace; font-size:11px;">${order.transactionId || 'pi_3P_verified'}</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Item Purchased</span>
+            <span>${order.productName} (x${order.quantity})</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Fulfillment Seller</span>
+            <span>${order.sellerName}</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Seller Disbursement</span>
+            <span style="color:var(--green); font-weight:600;">$${order.sellerPayout.toFixed(2)}</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Creator Referral Cut</span>
+            <span style="color:var(--cobalt); font-weight:600;">$${order.referralFee.toFixed(2)} (${order.creatorTag})</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Platform Cut</span>
+            <span>$${order.platformFee.toFixed(2)}</span>
+          </div>
+          <div class="receipt-row">
+            <span style="color:var(--muted);">Date & Time</span>
+            <span>${new Date(order.createdAt).toLocaleString()}</span>
+          </div>
+          <div class="receipt-row">
+            <span>Payment Status</span>
+            <span class="badge badge-connected">SUCCESSFUL</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <a href="/seller-dashboard.html?sellerId=${order.sellerId}" class="primary-btn" style="text-decoration:none;">
+            View Transaction in Seller Dashboard →
+          </a>
+          <button class="ghost-btn" onclick="state.paymentResult = null; render();">
+            Continue Browsing
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+loadProducts();
+</script>
+</body>
+</html>

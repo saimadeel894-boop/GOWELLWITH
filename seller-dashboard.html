@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Seller Dashboard & Stripe Connect</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .seller-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .seller-select-box {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: var(--sans);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .seller-select-box select {
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 12px 14px;
+    font-family: var(--sans);
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .stat-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .tabs-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+    font-family: var(--sans);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .state-switch-toolbar {
+    background: var(--lavender);
+    border-radius: 4px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-family: var(--sans);
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .state-switch-btns {
+    display: flex;
+    gap: 4px;
+  }
+  .state-pill-btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .state-pill-btn.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+</style>
+</head>
+<body>
+<div class="wrap-wide">
+  <div class="header-nav">
+    <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a> <span class="wordmark-sub">for sellers</span></div>
+    <div class="top-bar-links">
+      <a href="/feed-and-checkout.html">Buyer Feed</a>
+      <a href="/transactions.html">All Transactions</a>
+      <a href="/seller-onboarding.html">Onboarding Flow</a>
+    </div>
+  </div>
+
+  <div class="seller-header">
+    <div>
+      <div style="font-family:var(--sans); font-size:12px; color:var(--muted);">ACTIVE SELLER ACCOUNT</div>
+      <h2 style="margin:2px 0 0; font-size:24px;" id="seller-display-name">Studio No.9</h2>
+    </div>
+
+    <!-- Seller Switcher -->
+    <div class="seller-select-box">
+      <span style="color:var(--muted);">Switch Seller:</span>
+      <select id="seller-select" onchange="changeSeller(this.value)">
+        <option value="s-studio-9">Studio No.9 (Verified Pool)</option>
+        <option value="s-atelier-roh">Atelier Roh (Verified Pool)</option>
+        <option value="s-boutique-shop">Boutique Collective (Open Pool)</option>
+        <option value="s-small-shop">Small Shop Co (Open Pool)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Demo State Switcher for Client Review -->
+  <div class="state-switch-toolbar">
+    <div><b>Stripe Connect State Switcher:</b> (Click to preview all 3 states)</div>
+    <div class="state-switch-btns">
+      <button class="state-pill-btn" id="pill-not-connected" onclick="setStripeState('not_connected')">1. Not Connected</button>
+      <button class="state-pill-btn" id="pill-onboarding" onclick="setStripeState('onboarding')">2. Onboarding</button>
+      <button class="state-pill-btn" id="pill-connected" onclick="setStripeState('connected')">3. Connected</button>
+    </div>
+  </div>
+
+  <!-- Stripe Connect Section -->
+  <div id="stripe-connect-container">
+    <!-- Rendered dynamically -->
+  </div>
+
+  <!-- Metrics Overview -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Available Balance</div>
+      <div class="stat-val" id="stat-balance">$0.00</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Orders Fulfilled</div>
+      <div class="stat-val" id="stat-orders">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Marketplace Pool</div>
+      <div class="stat-val" style="font-size:16px; margin-top:3px;" id="stat-pool">Verified</div>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <div class="tabs-nav">
+    <button class="tab-btn active" id="tab-orders-btn" onclick="switchTab('orders')">Transactions & Orders</button>
+    <button class="tab-btn" id="tab-products-btn" onclick="switchTab('products')">Product Catalog</button>
+    <button class="tab-btn" id="tab-profile-btn" onclick="switchTab('profile')">Account Profile</button>
+  </div>
+
+  <!-- Tab Content: Orders -->
+  <div id="tab-orders">
+    <div class="card" style="padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="font-weight:700; font-family:var(--sans); font-size:15px;">Seller Order & Disbursement History</div>
+        <a href="/feed-and-checkout.html" class="primary-btn" style="width:auto; padding:6px 14px; font-size:12px; margin:0; text-decoration:none;">
+          + Simulate New Purchase
+        </a>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" id="orders-table">
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              <th>Product</th>
+              <th>Customer</th>
+              <th>Gross Sale</th>
+              <th>Net Payout</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content: Products -->
+  <div id="tab-products" style="display:none;">
+    <div class="card" style="padding:16px;">
+      <div style="font-weight:700; font-family:var(--sans); font-size:15px; margin-bottom:12px;">Listed Products in GoWellWith Feed</div>
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Tagging Suggester</th>
+              <th>Retail Price</th>
+              <th>Est. Seller Payout</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content: Profile -->
+  <div id="tab-profile" style="display:none;">
+    <div class="card" style="padding:20px; font-family:var(--sans); font-size:13px;">
+      <h3 style="font-family:var(--serif); margin-top:0;">Seller Profile & Settings</h3>
+      <div style="display:grid; grid-template-columns:140px 1fr; gap:10px; margin-bottom:8px;">
+        <span style="color:var(--muted);">Business Name:</span>
+        <b id="prof-name">Studio No.9</b>
+        <span style="color:var(--muted);">Contact Email:</span>
+        <span id="prof-email">hello@studionine.com</span>
+        <span style="color:var(--muted);">Country:</span>
+        <span id="prof-country">South Korea</span>
+        <span style="color:var(--muted);">Category:</span>
+        <span id="prof-category">Fashion</span>
+        <span style="color:var(--muted);">Fee Schedule:</span>
+        <span>Verified Pool (80% seller payout · 12% platform fee · 8% referral fee)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footnote">
+    GoWellWith Seller Hub · Stripe Connect ensures automated payouts with transparent escrow tracking.
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/js/api.js"></script>
+<script>
+let currentSellerId = 's-studio-9';
+let sellerData = null;
+
+function showToast(msg) {
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+// URL query parameter check (e.g. ?sellerId=s-studio-9)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('sellerId')) {
+  currentSellerId = urlParams.get('sellerId');
+}
+
+async function loadSeller() {
+  document.getElementById('seller-select').value = currentSellerId;
+  sellerData = await API.getSellerById(currentSellerId);
+  if (!sellerData) return;
+
+  document.getElementById('seller-display-name').textContent = sellerData.name;
+  document.getElementById('stat-balance').textContent = `$${sellerData.balance.toFixed(2)}`;
+  document.getElementById('stat-orders').textContent = sellerData.orders ? sellerData.orders.length : 0;
+  document.getElementById('stat-pool').textContent = sellerData.pool === 'verified' ? 'Verified Pool (80%)' : 'Open Pool (89%)';
+
+  document.getElementById('prof-name').textContent = sellerData.name;
+  document.getElementById('prof-email').textContent = sellerData.email;
+  document.getElementById('prof-country').textContent = sellerData.country;
+  document.getElementById('prof-category').textContent = sellerData.category;
+
+  renderStripeConnectBox();
+  renderOrdersTable();
+  renderProductsTable();
+}
+
+function renderStripeConnectBox() {
+  const container = document.getElementById('stripe-connect-container');
+  const status = sellerData.stripeStatus || 'not_connected';
+
+  // Update pills
+  document.getElementById('pill-not-connected').className = `state-pill-btn ${status==='not_connected'?'active':''}`;
+  document.getElementById('pill-onboarding').className = `state-pill-btn ${status==='onboarding'?'active':''}`;
+  document.getElementById('pill-connected').className = `state-pill-btn ${status==='connected'?'active':''}`;
+
+  if (status === 'not_connected') {
+    container.innerHTML = `
+      <div class="stripe-box not_connected">
+        <div class="stripe-box-header">
+          <div class="stripe-box-title">
+            <span class="badge badge-error">Not Connected</span>
+            <span>Stripe Connect Account</span>
+          </div>
+          <span style="font-size:11.5px; color:var(--muted);">Action Required</span>
+        </div>
+        <div class="stripe-box-body">
+          Connect your bank account or debit card via Stripe Connect to receive automatic disbursements for completed orders.
+        </div>
+        <button class="connect-btn" onclick="startStripeOnboarding()">
+          <span class="stripe-mark">stripe</span> Connect Stripe Account
+        </button>
+      </div>
+    `;
+  } else if (status === 'onboarding') {
+    container.innerHTML = `
+      <div class="stripe-box onboarding">
+        <div class="stripe-box-header">
+          <div class="stripe-box-title">
+            <span class="badge badge-pending">Onboarding in Progress</span>
+            <span>Stripe Connect Setup</span>
+          </div>
+          <span style="font-size:11px; font-family:monospace;">${sellerData.stripeAccountId || 'acct_pending'}</span>
+        </div>
+        <div class="stripe-box-body">
+          <b>Stripe onboarding is in progress.</b> Please complete your identity and payout verification with Stripe to unlock instant payouts.
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="primary-btn" style="margin:0; width:auto; padding:9px 16px; font-size:13px;" onclick="completeOnboarding()">
+            Resume / Complete Onboarding →
+          </button>
+          <button class="ghost-btn" style="margin:0; width:auto; padding:9px 14px; font-size:12px;" onclick="setStripeState('connected')">
+            Mark Verified (Demo)
+          </button>
+        </div>
+      </div>
+    `;
+  } else if (status === 'connected') {
+    container.innerHTML = `
+      <div class="stripe-box connected">
+        <div class="stripe-box-header">
+          <div class="stripe-box-title">
+            <span class="badge badge-connected">✓ Connected</span>
+            <span>Stripe Connect Account</span>
+          </div>
+          <span style="font-size:11.5px; font-family:monospace; color:var(--muted);">ID: ${sellerData.stripeAccountId || 'acct_1N_connected'}</span>
+        </div>
+        <div class="stripe-box-body" style="color:#1E4620;">
+          <b>Stripe account connected successfully.</b> Automatic direct deposit is enabled. Payouts are transferred automatically when buyer orders complete.
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--muted); border-top:1px solid #BBF7D0; padding-top:8px;">
+          <span>Charges Enabled: <b>Yes</b> · Payouts Enabled: <b>Yes</b></span>
+          <span style="color:var(--cobalt); cursor:pointer;" onclick="showToast('Redirecting to Stripe Express Dashboard...')">View Stripe Express Dashboard ↗</span>
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function setStripeState(state) {
+  const updated = await API.toggleSellerStatus(currentSellerId, state);
+  sellerData.stripeStatus = state;
+  showToast(`Stripe state updated to: ${state.replace('_', ' ')}`);
+  renderStripeConnectBox();
+}
+
+async function startStripeOnboarding() {
+  showToast('Initiating Stripe Connect Onboarding...');
+  await API.createStripeAccount(currentSellerId, { email: sellerData.email });
+  sellerData.stripeStatus = 'onboarding';
+  renderStripeConnectBox();
+}
+
+function completeOnboarding() {
+  setStripeState('connected');
+  showToast('Stripe onboarding completed! Account ready.');
+}
+
+async function renderOrdersTable() {
+  const tbody = document.getElementById('orders-tbody');
+  const allOrders = await API.getOrders({ sellerId: currentSellerId });
+
+  if (allOrders.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:24px; color:var(--muted);">
+          No orders received yet for this seller. Go to the <a href="/feed-and-checkout.html" style="color:var(--cobalt);">Buyer Feed</a> to simulate a purchase.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = allOrders.map(o => `
+    <tr>
+      <td><b>${o.orderId}</b></td>
+      <td style="color:var(--muted); font-size:11.5px;">${new Date(o.createdAt).toLocaleDateString()}</td>
+      <td>${o.productName} (x${o.quantity})</td>
+      <td>${o.customerName}</td>
+      <td>$${o.amount.toFixed(2)}</td>
+      <td style="color:var(--green); font-weight:600;">+$${o.sellerPayout.toFixed(2)}</td>
+      <td>
+        <span class="badge ${o.paymentStatus === 'successful' ? 'badge-connected' : 'badge-error'}">
+          ${o.paymentStatus.toUpperCase()}
+        </span>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderProductsTable() {
+  const tbody = document.getElementById('products-tbody');
+  const products = sellerData.products || [];
+
+  if (products.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:16px; color:var(--muted);">No products listed.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = products.map(p => {
+    const split = API.calculateSplit(p.price, p.verified);
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:600;">${p.name}</div>
+          <div style="font-size:11px; color:var(--muted);">${p.description ? p.description.substring(0, 48) + '...' : ''}</div>
+        </td>
+        <td><span class="creator-tag-chip" style="margin:0; padding:2px 8px; font-size:11px;">${p.by}</span></td>
+        <td>$${p.price.toFixed(2)}</td>
+        <td style="color:var(--green); font-weight:600;">$${split.seller.toFixed(2)}</td>
+        <td><span class="badge ${p.verified ? 'badge-connected' : 'badge-pending'}">${p.verified ? 'Active Verified' : 'Open Tagged'}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function changeSeller(id) {
+  currentSellerId = id;
+  loadSeller();
+}
+
+function switchTab(tab) {
+  ['orders', 'products', 'profile'].forEach(t => {
+    document.getElementById(`tab-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.getElementById(`tab-${t}-btn`).className = `tab-btn ${t === tab ? 'active' : ''}`;
+  });
+}
+
+loadSeller();
+</script>
+</body>
+</html>

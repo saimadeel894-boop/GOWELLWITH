@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Suggester & Creator Payouts</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .trigger-row{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-bottom:16px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--line);
+  }
+  .trigger-copy{ font-family:var(--sans); font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .trigger-copy b{ color:var(--ink); }
+  .earn-box{
+    background:var(--lavender);
+    border-radius:2px;
+    padding:14px;
+    font-family:var(--sans);
+    margin-bottom:18px;
+  }
+  .earn-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:12.5px;
+    padding:4px 0;
+  }
+  .earn-row .k{ color:var(--muted); }
+  .earn-total{
+    display:flex;
+    justify-content:space-between;
+    font-size:14px;
+    font-weight:700;
+    border-top:1px solid var(--line);
+    margin-top:6px;
+    padding-top:8px;
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .field input{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    font-family:var(--sans);
+    font-size:13.5px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .skip-note{
+    font-family:var(--sans);
+    font-size:11px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:12px;
+    line-height:1.5;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script src="/js/api.js"></script>
+<script>
+let done = false;
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <header>
+      <div class="header-nav">
+        <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a> <span style="font-size:14px;color:var(--muted);font-family:var(--sans);">for creators</span></div>
+        <div class="top-bar-links">
+          <a href="/feed-and-checkout.html">Feed</a>
+          <a href="/seller-dashboard.html">Seller Hub</a>
+        </div>
+      </div>
+    </header>
+    <div class="card">${done ? statusScreen() : formScreen()}</div>
+  `;
+  attach();
+}
+
+function formScreen(){
+  return `
+    <div class="trigger-row">
+      <div class="mini-swatch" style="background:#2440E0; background-image:url('https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=400&q=80');"></div>
+      <div class="trigger-copy">Your pairing suggestion — <b>wide-leg trouser</b> — just got purchased on @ellbie.wears's post!</div>
+    </div>
+
+    <div style="font-size:20px; margin-bottom:6px; font-weight:normal;">You've got a referral cut coming</div>
+    <div style="font-family:var(--sans); font-size:12.5px; color:var(--muted); line-height:1.55; margin-bottom:18px;">
+      Add a payout account once via Stripe Connect, and every future suggestion that results in a customer sale deposits into your account automatically.
+    </div>
+
+    <div class="earn-box">
+      <div class="earn-row"><span class="k">This suggestion (6% referral)</span><span>$4.08</span></div>
+      <div class="earn-row"><span class="k">Pending from 2 previous picks</span><span>$6.20</span></div>
+      <div class="earn-total"><span>Total ready to disburse</span><span>$10.28 USD</span></div>
+    </div>
+
+    <div class="field">
+      <label>Where should we send your referral payouts</label>
+      <input id="creator-email" placeholder="Email for your Stripe payout account" value="haewon@curator.com" />
+    </div>
+
+    <button class="connect-btn" id="connect-btn">
+      <span class="stripe-mark">stripe</span> Connect Creator Payout Account
+    </button>
+    <div class="skip-note">Takes under a minute — no business details, no catalog setup, just where the referral money lands.</div>
+  `;
+}
+
+function statusScreen(){
+  return `
+    <div class="status-card">
+      <div class="status-icon success">✓</div>
+      <div class="status-title">Payout Account Connected</div>
+      <div class="status-body">
+        <b>$10.28 USD</b> is on its way to your connected Stripe account. Future customer purchases from your tagged suggestions will pay out the same way automatically!
+      </div>
+      <div class="badge-pending" style="background:#E6F4EA; color:var(--green); border-color:#A8DAB5;">
+        Disbursement Sent · Arrives in 1-2 Days
+      </div>
+      <div style="margin-top:20px;">
+        <a href="/feed-and-checkout.html" class="primary-btn" style="text-decoration:none;">
+          Return to Feed & Suggest Pairings →
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function attach(){
+  const btn = document.getElementById('connect-btn');
+  if(btn) btn.onclick = async () => {
+    btn.innerHTML = `<span class="spinner"></span> Connecting Stripe...`;
+    btn.disabled = true;
+    await new Promise(r => setTimeout(r, 1000));
+    done = true;
+    render();
+  };
+}
+
+render();
+</script>
+</body>
+</html>

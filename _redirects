@@ -1,0 +1,7 @@
+/api/*  /.netlify/functions/api/:splat  200
+/feed-and-checkout  /feed-and-checkout.html  200
+/seller-dashboard  /seller-dashboard.html  200
+/seller-onboarding  /seller-onboarding.html  200
+/seller-claim-sale  /seller-claim-sale.html  200
+/referrer-onboarding  /referrer-onboarding.html  200
+/transactions  /transactions.html  200

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Seller Onboarding</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .step-label{
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .steps{
+    display:flex;
+    gap:4px;
+    margin-bottom:22px;
+  }
+  .step-dot{
+    flex:1;
+    height:3px;
+    background:var(--line);
+    border-radius:2px;
+  }
+  .step-dot.done{ background:var(--cobalt); }
+  .step-dot.current{ background:var(--ink); }
+
+  .card-title{ font-size:18px; margin-bottom:4px; }
+  .card-sub{
+    font-family:var(--sans);
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:18px;
+    line-height:1.5;
+  }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .field input, .field select{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    font-family:var(--sans);
+    font-size:13.5px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .field input:focus, .field select:focus{
+    outline:none;
+    border-color:var(--cobalt);
+  }
+  .field-row{ display:flex; gap:10px; }
+  .field-row .field{ flex:1; }
+
+  .fee-box{
+    background:var(--lavender);
+    border-radius:2px;
+    padding:14px;
+    font-family:var(--sans);
+    font-size:12.5px;
+    margin:16px 0;
+  }
+  .fee-row{
+    display:flex;
+    justify-content:space-between;
+    padding:5px 0;
+  }
+  .fee-row .k{ color:var(--muted); }
+  .fee-note{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:8px;
+    line-height:1.5;
+  }
+
+  .agree{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-family:var(--sans);
+    font-size:12px;
+    color:var(--muted);
+    margin-top:14px;
+    line-height:1.5;
+  }
+  .agree input{ margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script src="/js/api.js"></script>
+<script>
+const state = {
+  step: 1,
+  agreed: false,
+  shopName: 'Studio No.9',
+  category: 'Fashion',
+  country: 'South Korea',
+  email: 'hello@studionine.com',
+  payoutMethod: 'Stripe Connect'
+};
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <header>
+      <div class="header-nav">
+        <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a> <span style="font-size:14px;color:var(--muted);font-family:var(--sans);">for sellers</span></div>
+        <div class="top-bar-links">
+          <a href="/seller-dashboard.html">Seller Hub</a>
+          <a href="/feed-and-checkout.html">Feed</a>
+        </div>
+      </div>
+      <div class="step-label">${stepLabel()}</div>
+    </header>
+    <div class="steps">
+      ${[1,2,3].map(i => `<div class="step-dot ${state.step>i?'done':state.step===i?'current':''}"></div>`).join('')}
+    </div>
+    <div class="card">${state.step===1?step1():state.step===2?step2():step3()}</div>
+  `;
+  attachHandlers();
+}
+
+function stepLabel(){
+  if(state.step===1) return 'Step 1 of 3 — Business details';
+  if(state.step===2) return 'Step 2 of 3 — Payout account (Stripe Connect)';
+  return 'Step 3 of 3 — Fees & agreement';
+}
+
+function step1(){
+  return `
+    <div class="card-title">Tell us about your shop</div>
+    <div class="card-sub">This is what buyers see when your product gets tagged in a suggestion.</div>
+    <div class="field"><label>Shop name</label><input id="inp-shop" value="${state.shopName}" /></div>
+    <div class="field-row">
+      <div class="field"><label>Category</label><select id="inp-cat"><option ${state.category==='Fashion'?'selected':''}>Fashion</option><option ${state.category==='Beauty'?'selected':''}>Beauty</option><option ${state.category==='Food'?'selected':''}>Food</option></select></div>
+      <div class="field"><label>Country</label><input id="inp-country" value="${state.country}" /></div>
+    </div>
+    <div class="field"><label>Contact email</label><input id="inp-email" value="${state.email}" /></div>
+    <button class="primary-btn" id="next-btn">Continue</button>
+  `;
+}
+
+function step2(){
+  return `
+    <div class="card-title">Set up payouts via Stripe Connect</div>
+    <div class="card-sub">Handled through our payment partner (Stripe Connect) — GoWellWith never sees or stores your banking credentials directly.</div>
+    <div class="field">
+      <label>Connected Payout Architecture</label>
+      <input readonly value="Stripe Connect Express Onboarding" style="background:#ECEFF1; font-weight:600;" />
+    </div>
+    <div class="field">
+      <label>Account holder email</label>
+      <input id="inp-stripe-email" value="${state.email}" />
+    </div>
+    <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:3px; padding:12px; font-family:var(--sans); font-size:12px; margin-bottom:14px;">
+      ✓ Direct deposits wired upon delivery · Automatic 3-way split calculation at checkout
+    </div>
+    <button class="primary-btn" id="next-btn">Authorize with Stripe Connect & Continue</button>
+    <button class="ghost-btn" id="back-btn">Back</button>
+  `;
+}
+
+function step3(){
+  return `
+    <div class="card-title">Review your fees</div>
+    <div class="card-sub">Rates depend on which pool your shop is in. You start in the open pool and move up once you've fulfilled a few orders.</div>
+    <div class="fee-box">
+      <div class="fee-row"><span class="k">Open pool (starting rate)</span><span>5% platform · 6% referral</span></div>
+      <div class="fee-row"><span class="k">Verified pool (after review)</span><span>12% platform · 8% referral</span></div>
+      <div class="fee-note">Referral fee goes to whichever customer suggested your product. Payouts land in your account per completed order, split automatically at checkout.</div>
+    </div>
+    <label class="agree">
+      <input type="checkbox" id="agree-check" ${state.agreed?'checked':''}/>
+      I agree to Paired's seller terms and the fee structure shown above.
+    </label>
+    <button class="primary-btn" id="submit-btn" ${state.agreed?'':'disabled'}>Complete Setup & Submit</button>
+    <button class="ghost-btn" id="back-btn">Back</button>
+  `;
+}
+
+function statusScreen(){
+  return `
+    <div class="card status-card">
+      <div class="status-icon success">✓</div>
+      <div class="status-title">You're in the open pool!</div>
+      <div class="status-body">
+        Your products can now be tagged in suggestions right away, and payouts are linked to your Stripe account. Once you've fulfilled a handful of orders smoothly, we'll invite you to the verified pool.
+      </div>
+      <div class="badge-pool">Stripe Connect · Active</div>
+      <div style="margin-top:20px;">
+        <a href="/seller-dashboard.html" class="primary-btn" style="text-decoration:none;">Open Seller Dashboard →</a>
+      </div>
+    </div>
+  `;
+}
+
+function attachHandlers(){
+  const next = document.getElementById('next-btn');
+  const back = document.getElementById('back-btn');
+  const submit = document.getElementById('submit-btn');
+  const agreeCheck = document.getElementById('agree-check');
+
+  if(next) next.onclick = () => {
+    if(state.step === 1) {
+      state.shopName = document.getElementById('inp-shop').value;
+      state.email = document.getElementById('inp-email').value;
+    }
+    state.step++;
+    render();
+  };
+  if(back) back.onclick = () => { state.step--; render(); };
+  if(agreeCheck) agreeCheck.onchange = (e) => { state.agreed = e.target.checked; render(); };
+  if(submit) submit.onclick = async () => {
+    await API.createStripeAccount('s-studio-9', { email: state.email, businessName: state.shopName });
+    await API.toggleSellerStatus('s-studio-9', 'connected');
+    document.querySelector('.app').innerHTML = `
+      <header><div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a> <span style="font-size:14px;color:var(--muted);font-family:var(--sans);">for sellers</span></div></header>
+      ${statusScreen()}
+    `;
+  };
+}
+
+render();
+</script>
+</body>
+</html>

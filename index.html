@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoWellWith (Paired) — Social-Commerce MVP</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .hero-tag {
+    display: inline-block;
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cobalt-deep);
+    background: var(--lavender);
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .wrap { width: 100%; max-width: 680px; }
+  .wordmark-huge { font-size: 36px; margin-bottom: 6px; }
+  .wordmark-huge em { font-style: italic; color: var(--cobalt); }
+  .sub {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .grid-flows {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  a.card-flow {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 20px 22px;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  }
+  a.card-flow:hover {
+    border-color: var(--cobalt);
+    background: var(--lavender);
+    transform: translateY(-1px);
+  }
+  .flow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .flow-title {
+    font-size: 19px;
+    font-weight: normal;
+  }
+  .flow-desc {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .flow-pills {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .pill-feature {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink);
+    background: rgba(0,0,0,0.05);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .demo-bar-top {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--sans);
+    font-size: 12.5px;
+  }
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.9); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.9); opacity: 0.8; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="hero-tag">GoWellWith · Phase 1 MVP</span>
+    <div class="wordmark-huge">Pa<em>i</em>red</div>
+    <div class="sub">
+      A suggestion-driven social commerce marketplace where creators pair outfits, verified sellers fulfill orders, and Stripe Connect splits payments three ways automatically at checkout.
+    </div>
+  </header>
+
+  <div class="demo-bar-top">
+    <div class="live-badge">
+      <span class="live-dot"></span>
+      <span id="stripe-status-label">Stripe Connect: Demo Mode</span>
+    </div>
+    <div style="color:var(--muted);" id="orders-count-label">Loading transactions...</div>
+  </div>
+
+  <div class="grid-flows">
+    <a class="card-flow" href="/feed-and-checkout.html">
+      <div class="flow-header">
+        <span class="step-tag" style="background:#E6EEF8; color:var(--cobalt);">BUYER FLOW</span>
+        <span style="font-family:var(--sans); font-size:12px; color:var(--cobalt); font-weight:600;">Open Flow →</span>
+      </div>
+      <div class="flow-title">Feed, Product Details & Checkout</div>
+      <div class="flow-desc">
+        Browse outfit posts → view suggested pairings → inspect full product details with creator tag & seller profile → add to cart → checkout with transparent 3-way split → test payment processing with instant success receipt or failed payment recovery.
+      </div>
+      <div class="flow-pills">
+        <span class="pill-feature">Product Details Modal</span>
+        <span class="pill-feature">Cart & Quantity</span>
+        <span class="pill-feature">3-Way Fee Split</span>
+        <span class="pill-feature">Stripe Pay Flow</span>
+        <span class="pill-feature">Success & Failure Handling</span>
+      </div>
+    </a>
+
+    <a class="card-flow" href="/seller-dashboard.html">
+      <div class="flow-header">
+        <span class="step-tag" style="background:#FFF0E6; color:#D9531E;">SELLER DASHBOARD</span>
+        <span style="font-family:var(--sans); font-size:12px; color:#D9531E; font-weight:600;">Open Dashboard →</span>
+      </div>
+      <div class="flow-title">Seller Hub & Stripe Connect States</div>
+      <div class="flow-desc">
+        Dedicated seller experience. Inspect seller profile, view and toggle Stripe Connect onboarding states (Not Connected, Onboarding, Connected), monitor live payout balances, view listed products, and review customer transactions.
+      </div>
+      <div class="flow-pills">
+        <span class="pill-feature">Stripe Connect Status</span>
+        <span class="pill-feature">Payout Balance</span>
+        <span class="pill-feature">Product Catalog</span>
+        <span class="pill-feature">Transaction Feed</span>
+      </div>
+    </a>
+
+    <a class="card-flow" href="/seller-onboarding.html">
+      <div class="flow-header">
+        <span class="step-tag">SELLER ONBOARDING</span>
+        <span style="font-family:var(--sans); font-size:12px; color:var(--muted);">3-Step Wizard →</span>
+      </div>
+      <div class="flow-title">Verified Seller Onboarding</div>
+      <div class="flow-desc">
+        Full seller registration flow: Business details → Payout setup via Stripe Connect → Fee agreement & pool assignment.
+      </div>
+    </a>
+
+    <a class="card-flow" href="/seller-claim-sale.html">
+      <div class="flow-header">
+        <span class="step-tag">CLAIM SALE</span>
+        <span style="font-family:var(--sans); font-size:12px; color:var(--muted);">Time-Boxed Invite →</span>
+      </div>
+      <div class="flow-title">Open-Pool Seller Claim Sale</div>
+      <div class="flow-desc">
+        Lightweight countdown invite for an open-pool seller whose tagged product just sold. Connects payout account to release escrowed funds.
+      </div>
+    </a>
+
+    <a class="card-flow" href="/referrer-onboarding.html">
+      <div class="flow-header">
+        <span class="step-tag">SUGGESTER FLOW</span>
+        <span style="font-family:var(--sans); font-size:12px; color:var(--muted);">Creator Payout →</span>
+      </div>
+      <div class="flow-title">Suggester / Creator Onboarding</div>
+      <div class="flow-desc">
+        One-time payout account setup for creators whose suggested pairing got purchased by buyers.
+      </div>
+    </a>
+
+    <a class="card-flow" href="/transactions.html">
+      <div class="flow-header">
+        <span class="step-tag" style="background:#E6F4EA; color:var(--green);">PLATFORM AUDIT</span>
+        <span style="font-family:var(--sans); font-size:12px; color:var(--green); font-weight:600;">Monitor Orders →</span>
+      </div>
+      <div class="flow-title">Transactions & Webhook Log Monitor</div>
+      <div class="flow-desc">
+        Real-time transaction registry auditing order IDs, seller payouts, creator referral cuts, and live Stripe webhook event payloads.
+      </div>
+    </a>
+  </div>
+
+  <div class="footnote">
+    GoWellWith MVP · Built for client demo & Stripe Connect validation. Preserves original typography, responsive styling, and modular components.
+  </div>
+</div>
+
+<script src="/js/api.js"></script>
+<script>
+  async function init() {
+    const config = await API.getConfig();
+    const isReal = config.stripe && config.stripe.isRealStripe;
+    const label = document.getElementById('stripe-status-label');
+    if (label) {
+      label.textContent = isReal ? 'Stripe Connect: Test Mode (Live API)' : 'Stripe Connect: Demo Payment Mode';
+      if (!isReal) {
+        label.parentElement.querySelector('.live-dot').style.background = 'var(--gold)';
+      }
+    }
+    const orders = await API.getOrders();
+    const countEl = document.getElementById('orders-count-label');
+    if (countEl) {
+      countEl.textContent = `${orders.length} transactions recorded`;
+    }
+  }
+  init();
+</script>
+</body>
+</html>

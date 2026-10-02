@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Claim Your Sale</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .urgency-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--coral);
+    font-weight:700;
+    margin-bottom:16px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--line);
+  }
+  .countdown{ font-variant-numeric:tabular-nums; }
+  .trigger-row{
+    display:flex;
+    gap:12px;
+    align-items:center;
+    margin-bottom:16px;
+  }
+  .trigger-copy{ font-family:var(--sans); font-size:12.5px; color:var(--muted); line-height:1.5; }
+  .trigger-copy b{ color:var(--ink); }
+  .amount-box{
+    background:var(--lavender);
+    border-radius:2px;
+    padding:16px;
+    margin-bottom:18px;
+    text-align:center;
+  }
+  .amount-label{ font-family:var(--sans); font-size:11.5px; color:var(--muted); margin-bottom:4px; }
+  .amount-value{ font-size:32px; font-weight:700; color:var(--ink); }
+  .amount-note{ font-family:var(--sans); font-size:11px; color:var(--muted); margin-top:4px; }
+  .field{ margin-bottom:14px; }
+  .field label{
+    display:block;
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--muted);
+    margin-bottom:5px;
+  }
+  .field input{
+    width:100%;
+    padding:10px 11px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    font-family:var(--sans);
+    font-size:13.5px;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .decline-link{
+    display:block;
+    text-align:center;
+    font-family:var(--sans);
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:14px;
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:none;
+    width:100%;
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script src="/js/api.js"></script>
+<script>
+let screen = 'invite'; // invite | claimed | declined
+let seconds = 71 * 60 + 12;
+
+function formatCountdown(s){
+  const h = Math.floor(s/3600);
+  const m = Math.floor((s%3600)/60);
+  return `${h}h ${m}m left to claim`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <header>
+      <div class="header-nav">
+        <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a></div>
+        <div class="top-bar-links">
+          <a href="/feed-and-checkout.html">Feed</a>
+          <a href="/seller-dashboard.html">Seller Hub</a>
+        </div>
+      </div>
+    </header>
+    <div class="card">${screenFor(screen)}</div>
+  `;
+  attach();
+}
+
+function screenFor(s){
+  if(s==='invite') return inviteScreen();
+  if(s==='claimed') return claimedScreen();
+  return declinedScreen();
+}
+
+function inviteScreen(){
+  return `
+    <div class="urgency-bar">
+      <span>PENDING ORDER CLAIM</span>
+      <span class="countdown">${formatCountdown(seconds)}</span>
+    </div>
+    <div class="trigger-row">
+      <div class="mini-swatch" style="background:#DAD7CE; background-image:url('https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?auto=format&fit=crop&w=400&q=80');"></div>
+      <div class="trigger-copy">Your <b>ivory ribbed knit tank</b> was tagged by @juno_style and just got bought by a customer.</div>
+    </div>
+    <div style="font-size:20px; margin-bottom:6px; font-weight:normal;">Someone bought your product</div>
+    <div style="font-family:var(--sans); font-size:12.5px; color:var(--muted); line-height:1.55; margin-bottom:18px;">
+      Connect a payout account to receive this disbursement. It takes under a minute via Stripe Connect — no catalog setup required.
+    </div>
+
+    <div class="amount-box">
+      <div class="amount-label">Your payout for this order</div>
+      <div class="amount-value">$18.92 USD</div>
+      <div class="amount-note">of $22.00 sale — 5% platform ($1.10) and 6% referral ($1.32) fees deducted</div>
+    </div>
+
+    <div class="field">
+      <label>Where should we send your money</label>
+      <input id="claim-email" placeholder="Email for your payout account" value="sales@smallshopco.com" />
+    </div>
+
+    <button class="connect-btn" id="connect-btn">
+      <span class="stripe-mark">stripe</span> Connect & claim this sale
+    </button>
+    <button class="decline-link" id="decline-btn">Not your product, or not interested</button>
+  `;
+}
+
+function claimedScreen(){
+  return `
+    <div class="status-card">
+      <div class="status-icon success">✓</div>
+      <div class="status-title">Sale Claimed & Connected!</div>
+      <div class="status-body">
+        <b>$18.92</b> is queued for transfer through Stripe Connect, arriving in 1-2 business days. The buyer has been notified that fulfillment has begun.
+      </div>
+      <div class="badge-pending" style="background:#E6F4EA; color:var(--green); border-color:#A8DAB5;">
+        Transfer Initiated · Order Confirmed
+      </div>
+      <div style="margin-top:20px;">
+        <a href="/seller-dashboard.html?sellerId=s-small-shop" class="primary-btn" style="text-decoration:none;">
+          View in Seller Dashboard →
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function declinedScreen(){
+  return `
+    <div class="status-card">
+      <div class="status-icon" style="background:var(--muted);">✕</div>
+      <div class="status-title">Sale Declined</div>
+      <div class="status-body">This transaction has been cancelled. The buyer will receive a prompt refund.</div>
+      <button class="ghost-btn" style="margin-top:16px;" onclick="screen='invite'; render();">Undo</button>
+    </div>
+  `;
+}
+
+function attach(){
+  const btn = document.getElementById('connect-btn');
+  const dec = document.getElementById('decline-btn');
+  if(btn) btn.onclick = async () => {
+    btn.innerHTML = `<span class="spinner"></span> Connecting Stripe...`;
+    btn.disabled = true;
+    await new Promise(r => setTimeout(r, 1000));
+    await API.toggleSellerStatus('s-small-shop', 'connected');
+    screen = 'claimed';
+    render();
+  };
+  if(dec) dec.onclick = () => { screen = 'declined'; render(); };
+}
+
+render();
+</script>
+</body>
+</html>

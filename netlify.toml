@@ -1,0 +1,45 @@
+[build]
+  publish = "public"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/feed-and-checkout"
+  to = "/feed-and-checkout.html"
+  status = 200
+
+[[redirects]]
+  from = "/seller-onboarding"
+  to = "/seller-onboarding.html"
+  status = 200
+
+[[redirects]]
+  from = "/seller-claim-sale"
+  to = "/seller-claim-sale.html"
+  status = 200
+
+[[redirects]]
+  from = "/referrer-onboarding"
+  to = "/referrer-onboarding.html"
+  status = 200
+
+[[redirects]]
+  from = "/seller-dashboard"
+  to = "/seller-dashboard.html"
+  status = 200
+
+[[redirects]]
+  from = "/transactions"
+  to = "/transactions.html"
+  status = 200

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paired — Platform Transactions & Webhook Monitor</title>
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .monitor-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .code-block {
+    background: #191B22;
+    color: #F6F5F1;
+    font-family: monospace;
+    font-size: 11px;
+    padding: 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    max-height: 240px;
+  }
+  .wh-event-row {
+    border-left: 3px solid var(--cobalt);
+    background: #fff;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border-radius: 2px;
+    font-family: var(--sans);
+    font-size: 12px;
+  }
+  .wh-event-row.success { border-left-color: var(--green); }
+  .wh-event-row.failed { border-left-color: var(--coral); }
+</style>
+</head>
+<body>
+<div class="wrap-wide">
+  <div class="header-nav">
+    <div class="wordmark"><a href="/index.html" style="text-decoration:none; color:inherit;">Pa<em>i</em>red</a> <span class="wordmark-sub">Platform Ledger</span></div>
+    <div class="top-bar-links">
+      <a href="/feed-and-checkout.html">Buyer Feed</a>
+      <a href="/seller-dashboard.html">Seller Hub</a>
+      <a href="/index.html">Index</a>
+    </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:16px;">
+    <div>
+      <h2 style="font-size:22px; margin:0 0 4px;">Platform Transactions & 3-Way Split Audit</h2>
+      <div style="font-family:var(--sans); font-size:12.5px; color:var(--muted);">
+        Every purchase is recorded with server-verified prices and automatic Stripe Connect fee allocations.
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <a href="/feed-and-checkout.html" class="primary-btn" style="width:auto; margin:0; padding:8px 14px; font-size:12px; text-decoration:none;">
+        + Create Purchase
+      </a>
+      <button class="ghost-btn" style="width:auto; margin:0; padding:8px 12px; font-size:12px;" onclick="loadData()">
+        ↻ Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Transactions Table Card -->
+  <div class="card" style="padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div style="font-weight:700; font-family:var(--sans); font-size:14px;">Order & Escrow Ledger</div>
+      <div style="font-family:var(--sans); font-size:11.5px; color:var(--muted);" id="orders-summary-stat">Loading...</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Buyer</th>
+            <th>Product & Seller</th>
+            <th>Creator Tag</th>
+            <th>Total Paid</th>
+            <th>Platform (Cut)</th>
+            <th>Referral (Cut)</th>
+            <th>Seller (Disbursed)</th>
+            <th>Stripe Ref</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="orders-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Stripe Webhooks Monitor Section -->
+  <div class="card" style="padding:16px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+      <div>
+        <div style="font-weight:700; font-family:var(--sans); font-size:14px;">Stripe Webhook Event Stream</div>
+        <div style="font-family:var(--sans); font-size:11.5px; color:var(--muted);">
+          Endpoint: <code>/api/webhooks/stripe</code> · HMAC Signature Verification Active
+        </div>
+      </div>
+      <div style="display:flex; gap:6px;">
+        <button class="ghost-btn" style="margin:0; width:auto; font-size:11px; padding:5px 10px;" onclick="simulateWebhook('payment_intent.succeeded')">
+          + Simulate payment_intent.succeeded
+        </button>
+        <button class="ghost-btn" style="margin:0; width:auto; font-size:11px; padding:5px 10px;" onclick="simulateWebhook('payment_intent.payment_failed')">
+          + Simulate payment_failed
+        </button>
+      </div>
+    </div>
+
+    <div id="webhooks-list">
+      <!-- Webhooks listed here -->
+    </div>
+  </div>
+
+  <div class="footnote">
+    GoWellWith Architecture · Stripe Connect transfers with application_fee_amount guarantees that sellers and creators receive direct payouts while GoWellWith retains the marketplace platform fee.
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script src="/js/api.js"></script>
+<script>
+function showToast(msg) {
+  const container = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  container.appendChild(t);
+  setTimeout(() => t.remove(), 2800);
+}
+
+async function loadData() {
+  const orders = await API.getOrders();
+  const tbody = document.getElementById('orders-tbody');
+  document.getElementById('orders-summary-stat').textContent = `${orders.length} total platform orders`;
+
+  if (orders.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:20px; color:var(--muted);">No orders found.</td></tr>`;
+  } else {
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td><b>${o.orderId}</b><div style="font-size:10px; color:var(--muted);">${new Date(o.createdAt).toLocaleDateString()}</div></td>
+        <td>${o.customerName || 'Customer'}</td>
+        <td>
+          <div style="font-weight:600;">${o.productName}</div>
+          <div style="font-size:11px; color:var(--muted);">${o.sellerName}</div>
+        </td>
+        <td><span class="creator-tag-chip" style="margin:0; font-size:10.5px; padding:2px 6px;">${o.creatorTag}</span></td>
+        <td><b>$${o.amount.toFixed(2)}</b></td>
+        <td style="color:var(--muted);">$${o.platformFee ? o.platformFee.toFixed(2) : '0.00'}</td>
+        <td style="color:var(--cobalt); font-weight:600;">$${o.referralFee ? o.referralFee.toFixed(2) : '0.00'}</td>
+        <td style="color:var(--green); font-weight:600;">$${o.sellerPayout ? o.sellerPayout.toFixed(2) : '0.00'}</td>
+        <td><span style="font-family:monospace; font-size:10.5px;">${o.transactionId || 'pi_simulated'}</span></td>
+        <td>
+          <span class="badge ${o.paymentStatus === 'successful' ? 'badge-connected' : 'badge-error'}">
+            ${o.paymentStatus ? o.paymentStatus.toUpperCase() : 'PENDING'}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // Load Webhooks
+  const whs = await API.getWebhooks();
+  const whContainer = document.getElementById('webhooks-list');
+  if (whs.length === 0) {
+    whContainer.innerHTML = `<div style="text-align:center; padding:16px; color:var(--muted); font-family:var(--sans); font-size:12px;">No webhook events recorded yet.</div>`;
+  } else {
+    whContainer.innerHTML = whs.map(w => `
+      <div class="wh-event-row ${w.type.includes('succeeded') ? 'success' : w.type.includes('failed') ? 'failed' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <b>${w.type}</b>
+          <span style="font-size:11px; color:var(--muted);">${new Date(w.created).toLocaleTimeString()}</span>
+        </div>
+        <div style="font-size:11px; color:var(--muted); display:flex; gap:12px;">
+          <span>Event ID: <code>${w.id}</code></span>
+          <span>Verified Signature: <b style="color:var(--green);">✓ Valid</b></span>
+          ${w.orderId ? `<span>Target Order: <b>${w.orderId}</b></span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+async function simulateWebhook(type) {
+  showToast(`Simulating Stripe Webhook: ${type}`);
+  try {
+    const res = await fetch('/api/webhooks/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, data: { simulated: true, time: new Date().toISOString() } })
+    });
+    if (res.ok) {
+      showToast('Webhook event dispatched and processed!');
+    }
+  } catch(e) {}
+  loadData();
+}
+
+loadData();
+</script>
+</body>
+</html>
