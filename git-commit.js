@@ -48,7 +48,12 @@ async function commitProject() {
   console.log('✓ Committed with SHA:', sha);
 
   // 4. Branch main
-  await git.branch({ fs, dir, ref: 'main', object: sha, checkout: true });
+  try {
+    await git.branch({ fs, dir, ref: 'main', object: sha, checkout: true });
+  } catch (e) {
+    // Branch already exists, write ref
+    await git.writeRef({ fs, dir, ref: 'refs/heads/main', value: sha, force: true });
+  }
   console.log('✓ Set branch to main');
 
   // 5. Add remote origin
